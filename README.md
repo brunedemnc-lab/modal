@@ -1,5 +1,7 @@
 # Video classification challenge
 
+blabla
+
 This repository contains the codebase for the CSC_43M04_EP - Modal d'informatique - Deep Learning in Computer Vision Challenge "What_Happens_Next?" 
 
 The codebase allows to train a **video classifier** on folders of extracted frames. Each video is a directory of JPG frames; the model sees a fixed number of frames per clip and predicts one class among 33 action categories.
