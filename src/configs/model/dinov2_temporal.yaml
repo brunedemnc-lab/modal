@@ -1,0 +1,8 @@
+# @package _global_
+model:
+  name: dinov2_temporal
+  pretrained: true
+  num_classes: ${num_classes}
+  num_temporal_layers: 2
+  num_heads: 8
+  dropout: 0.1

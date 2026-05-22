@@ -6,7 +6,7 @@ defaults:
 training:
   lr: 1e-4
   backbone_lr_scale: 0.1   # backbone gets lr * 0.1 = 1e-5, head gets 1e-4
-  epochs: 15
+  epochs: 10
   batch_size: 8             # VideoMAE is memory-heavy; reduce if OOM
   weight_decay: 0.05
   label_smoothing: 0.1

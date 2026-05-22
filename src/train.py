@@ -28,6 +28,7 @@ from dataset.video_dataset import VideoFrameDataset, collect_video_samples
 from models.cnn_baseline import CNNBaseline
 from models.cnn_lstm import CNNLSTM
 from models.videomae_model import VideoMAEClassifier
+from models.dinov2_temporal import DINOv2TemporalClassifier
 from utils import build_transforms, set_seed, split_train_val
 
 
@@ -56,6 +57,14 @@ def build_model(cfg: DictConfig) -> nn.Module:
             model_name=model_name,
             dropout=dropout,
             gradient_checkpointing=gc,
+        )
+    if name == "dinov2_temporal":
+        return DINOv2TemporalClassifier(
+            num_classes=num_classes,
+            pretrained=pretrained,
+            num_temporal_layers=int(cfg.model.get("num_temporal_layers", 2)),
+            num_heads=int(cfg.model.get("num_heads", 8)),
+            dropout=float(cfg.model.get("dropout", 0.1)),
         )
 
     raise ValueError(f"Unknown model.name: {name}")

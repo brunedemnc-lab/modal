@@ -1,0 +1,19 @@
+# @package _global_
+# Track B: DINOv2 ViT-B/14 per frame + temporal transformer
+# Designed for 4-frame clips — no frame repetition needed
+defaults:
+  - override /model: dinov2_temporal
+
+training:
+  lr: 1e-4
+  backbone_lr_scale: 0.1   # backbone: 1e-5, temporal head: 1e-4
+  epochs: 10
+  batch_size: 16            # lighter than VideoMAE, larger batch OK
+  weight_decay: 0.05
+  label_smoothing: 0.1
+  warmup_epochs: 2
+  num_workers: 8
+  checkpoint_path: ${hydra:runtime.cwd}/track_b_dinov2/best_model.pt
+
+dataset:
+  num_frames: 4             # native frame count — no repetition
