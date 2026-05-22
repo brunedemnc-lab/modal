@@ -45,8 +45,10 @@ def build_transforms(
     if is_training:
         return transforms.Compose(
             [
-                transforms.Resize((image_size, image_size)),
+                transforms.RandomResizedCrop(image_size, scale=(0.6, 1.0)),
                 transforms.RandomHorizontalFlip(),
+                transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4, hue=0.1),
+                transforms.RandAugment(num_ops=2, magnitude=9),
                 transforms.ToTensor(),
                 normalize,
             ]
@@ -54,7 +56,8 @@ def build_transforms(
 
     return transforms.Compose(
         [
-            transforms.Resize((image_size, image_size)),
+            transforms.Resize(int(image_size * 1.14)),
+            transforms.CenterCrop(image_size),
             transforms.ToTensor(),
             normalize,
         ]

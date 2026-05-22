@@ -31,6 +31,7 @@ class CNNBaseline(nn.Module):
         self.backbone = backbone
         self.classifier = nn.Linear(feature_dim, num_classes)
 
+    @torch.compile
     def forward(self, video_batch: torch.Tensor) -> torch.Tensor:
         """
         video_batch: (batch_size, T, C, H, W)

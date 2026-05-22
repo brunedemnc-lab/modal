@@ -1,0 +1,18 @@
+# @package _global_
+# Track B: VideoMAE pretrained on SSv2, fine-tuned for anticipation
+defaults:
+  - override /model: videomae
+
+training:
+  lr: 1e-4
+  backbone_lr_scale: 0.1   # backbone gets lr * 0.1 = 1e-5, head gets 1e-4
+  epochs: 15
+  batch_size: 8             # VideoMAE is memory-heavy; reduce if OOM
+  weight_decay: 0.05
+  label_smoothing: 0.1
+  warmup_epochs: 2
+  num_workers: 8
+  checkpoint_path: ${hydra:runtime.cwd}/track_b_videomae/best_model.pt
+
+dataset:
+  num_frames: 16            # VideoMAE-base was pretrained with 16 frames

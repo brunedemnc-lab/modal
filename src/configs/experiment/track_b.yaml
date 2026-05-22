@@ -1,0 +1,17 @@
+# @package _global_
+# Track B: pretrained ResNet18 backbone + LSTM, with cosine scheduler and RandAugment
+defaults:
+  - override /model: cnn_lstm
+
+model:
+  pretrained: true
+  lstm_hidden_size: 256
+
+training:
+  lr: 3e-4
+  epochs: 20
+  batch_size: 32
+  weight_decay: 0.05
+  label_smoothing: 0.1
+  warmup_epochs: 2
+  checkpoint_path: ${hydra:runtime.cwd}/track_b/best_model.pt

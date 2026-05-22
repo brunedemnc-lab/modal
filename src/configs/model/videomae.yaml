@@ -1,0 +1,8 @@
+# @package _global_
+model:
+  name: videomae
+  pretrained: true
+  num_classes: ${num_classes}
+  model_name: "MCG-NJU/videomae-base-finetuned-ssv2"
+  dropout: 0.1
+  gradient_checkpointing: false

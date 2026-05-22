@@ -24,8 +24,8 @@ class CNNLSTM(nn.Module):
         lstm_hidden_size: int = 512,
     ) -> None:
         super().__init__()
-        weights = models.ResNet18_Weights.IMAGENET1K_V1 if pretrained else None
-        backbone = models.resnet18(weights=weights)
+        weights = models.ResNet34_Weights.IMAGENET1K_V1 if pretrained else None
+        backbone = models.resnet34(weights=weights)
         feature_dim = backbone.fc.in_features  # 512
         backbone.fc = nn.Identity()
         self.backbone = backbone
@@ -38,6 +38,7 @@ class CNNLSTM(nn.Module):
         )
         self.classifier = nn.Linear(lstm_hidden_size, num_classes)
 
+    @torch.compile
     def forward(self, video_batch: torch.Tensor) -> torch.Tensor:
         """
         video_batch: (batch_size, T, C, H, W)

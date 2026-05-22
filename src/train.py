@@ -14,10 +14,10 @@ split; the dedicated ``dataset.val_dir`` is for ``evaluate.py`` only.
 """
 
 from __future__ import annotations
-
+import time
 from pathlib import Path
 from typing import Any, Dict, Tuple
-
+from tqdm import tqdm
 import hydra
 import torch
 import torch.nn as nn
@@ -27,6 +27,7 @@ from torch.utils.data import DataLoader
 from dataset.video_dataset import VideoFrameDataset, collect_video_samples
 from models.cnn_baseline import CNNBaseline
 from models.cnn_lstm import CNNLSTM
+from models.videomae_model import VideoMAEClassifier
 from utils import build_transforms, set_seed, split_train_val
 
 
@@ -45,6 +46,17 @@ def build_model(cfg: DictConfig) -> nn.Module:
             pretrained=pretrained,
             lstm_hidden_size=int(hidden),
         )
+    if name == "videomae":
+        model_name = cfg.model.get("model_name", "MCG-NJU/videomae-base-finetuned-ssv2")
+        dropout = float(cfg.model.get("dropout", 0.0))
+        gc = bool(cfg.model.get("gradient_checkpointing", False))
+        return VideoMAEClassifier(
+            num_classes=num_classes,
+            pretrained=pretrained,
+            model_name=model_name,
+            dropout=dropout,
+            gradient_checkpointing=gc,
+        )
 
     raise ValueError(f"Unknown model.name: {name}")
 
@@ -62,7 +74,8 @@ def train_one_epoch(
     correct = 0
     total = 0
 
-    for video_batch, labels in data_loader:
+    for k,(video_batch, labels) in tqdm(enumerate(data_loader)):
+        current_time = time.time()
         # video_batch: (B, T, C, H, W), labels: (B,)
         video_batch = video_batch.to(device)
         labels = labels.to(device)
@@ -75,6 +88,9 @@ def train_one_epoch(
 
         running_loss += float(loss.item()) * labels.size(0)
         predictions = logits.argmax(dim=1)
+        elapsed = time.time()-current_time
+        #if k%10==0:
+        #    print(f"Step {k} elapsed {elapsed}")
         correct += int((predictions == labels).sum().item())
         total += labels.size(0)
 
@@ -176,17 +192,40 @@ def main(cfg: DictConfig) -> None:
     )
 
     model = build_model(cfg).to(device)
-    loss_fn = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=float(cfg.training.lr))
+    label_smoothing = float(cfg.training.get("label_smoothing", 0.1))
+    loss_fn = nn.CrossEntropyLoss(label_smoothing=label_smoothing)
+    weight_decay = float(cfg.training.get("weight_decay", 0.05))
+    backbone_lr_scale = float(cfg.training.get("backbone_lr_scale", 1.0))
+    if backbone_lr_scale != 1.0 and hasattr(model, "param_groups"):
+        param_groups = model.param_groups(
+            backbone_lr=float(cfg.training.lr) * backbone_lr_scale,
+            head_lr=float(cfg.training.lr),
+        )
+        optimizer = torch.optim.AdamW(param_groups, weight_decay=weight_decay)
+    else:
+        optimizer = torch.optim.AdamW(model.parameters(), lr=float(cfg.training.lr), weight_decay=weight_decay)
+
+    num_epochs = int(cfg.training.epochs)
+    warmup_epochs = int(cfg.training.get("warmup_epochs", 2))
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+        optimizer, T_max=num_epochs - warmup_epochs, eta_min=1e-6
+    )
+    warmup_scheduler = torch.optim.lr_scheduler.LinearLR(
+        optimizer, start_factor=0.1, end_factor=1.0, total_iters=warmup_epochs
+    )
+    combined_scheduler = torch.optim.lr_scheduler.SequentialLR(
+        optimizer, schedulers=[warmup_scheduler, scheduler], milestones=[warmup_epochs]
+    )
 
     best_val_accuracy = 0.0
     checkpoint_path = Path(cfg.training.checkpoint_path).resolve()
 
-    for epoch in range(int(cfg.training.epochs)):
+    for epoch in range(num_epochs):
         train_loss, train_acc = train_one_epoch(
             model, train_loader, loss_fn, optimizer, device
         )
         val_loss, val_acc = evaluate_epoch(model, val_loader, loss_fn, device)
+        combined_scheduler.step()
 
         print(
             f"Epoch {epoch + 1}/{cfg.training.epochs} | "
